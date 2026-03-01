@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
   "typer>=0.15.1,<0.18.0",
-  "playwright>=1.41.0",
+  "patchright>=1.0.0",
   "rich>=13.7.0",
   "pushbullet.py>=0.12.0",
   "diskcache>=5.6.3",
@@ -65,6 +65,7 @@ test = [
   "xdoctest>=1.2.0",
   "coverage[toml]>=7.6.7",
   "pytest-cov>=6.0.0",
+  # pytest-playwright works with patchright (drop-in replacement)
   "pytest-playwright>=0.7.0",
 ]
 linters = ["isort>=5.13.2,<7.0.0", "black>=24.10,<26.0", "ruff>=0.9.2,<0.14.0"]

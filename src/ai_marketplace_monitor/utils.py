@@ -15,7 +15,7 @@ import parsedatetime  # type: ignore
 import requests  # type: ignore
 import rich
 from diskcache import Cache  # type: ignore
-from playwright.sync_api import ProxySettings
+from patchright.sync_api import ProxySettings
 from pyparsing import (
     CharsNotIn,
     Keyword,

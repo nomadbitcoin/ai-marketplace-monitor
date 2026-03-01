@@ -80,8 +80,10 @@ AI: Great deal; A well-priced, well-maintained camera meets all search criteria,
 
 ```bash
 pip install ai-marketplace-monitor
-playwright install
+python -m patchright install chromium
 ```
+
+> **Note:** This project uses Patchright (a stealth fork of Playwright) for enhanced bot detection bypass when automating Facebook Marketplace.
 
 ### Basic Configuration
 

@@ -4,7 +4,7 @@ from enum import Enum
 from logging import Logger
 from typing import Any, Callable, Generator, Generic, List, Type, TypeVar
 
-from playwright.sync_api import Browser, ElementHandle, Locator, Page  # type: ignore
+from patchright.sync_api import Browser, ElementHandle, Locator, Page  # type: ignore
 
 from .listing import Listing
 from .utils import (
