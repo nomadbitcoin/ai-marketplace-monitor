@@ -1302,13 +1302,16 @@ def parse_listing(
                 seller = text
                 break
 
-        # Try to find price (usually near H1)
+        # Try to find price - look for span with $ symbol
         price = ""
         try:
-            price_element = page.locator("h1 + *").first
-            price_text = price_element.text_content() or ""
-            if "$" in price_text or price_text.replace(",", "").isdigit():
-                price = price_text
+            # Facebook uses span[dir="auto"] for prices
+            price_spans = page.query_selector_all("span[dir='auto']")
+            for span in price_spans:
+                text = (span.text_content() or "").strip()
+                if "$" in text and len(text) < 20:  # Price should be short
+                    price = text
+                    break  # Take first price found
         except:
             pass
 

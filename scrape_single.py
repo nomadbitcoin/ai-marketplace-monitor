@@ -24,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger("scraper")
 
 # URL to scrape
-TARGET_URL = "https://www.facebook.com/marketplace/item/1436610837829708/?ref=search&referral_code=null&referral_story_type=post&tracking=browse_serp%3A523b45e6-56c1-4b95-af8a-9cc839fefd74"
+TARGET_URL = "https://www.facebook.com/marketplace/item/1569242467518413/?ref=search&referral_code=null&referral_story_type=post&tracking=browse_serp%3A523b45e6-56c1-4b95-af8a-9cc839fefd74"
 
 print("\n" + "="*80)
 print(f"SCRAPING: {TARGET_URL}")
