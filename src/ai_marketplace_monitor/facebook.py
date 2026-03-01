@@ -1354,6 +1354,25 @@ def parse_listing(
         except:
             pass
 
+        # Extract location - look for common NZ city names
+        location = ""
+        try:
+            # Common NZ cities
+            nz_cities = ["Auckland", "Wellington", "Christchurch", "Hamilton", "Tauranga",
+                        "Dunedin", "Napier", "Rotorua", "Thames", "Queenstown"]
+            spans = page.query_selector_all("span")
+            for span in spans:
+                text = (span.text_content() or "").strip()
+                # Check if any NZ city is in the text
+                for city in nz_cities:
+                    if city in text and len(text) < 50:  # Location text should be short
+                        location = text
+                        break
+                if location:
+                    break
+        except:
+            pass
+
         if title:
             if logger:
                 logger.info(f"{hilight('[Parse]', 'succ')} Fallback parser extracted: {title}")
@@ -1366,8 +1385,8 @@ def parse_listing(
                 image=image_url,
                 price=extract_price(price) if price else "",
                 post_url=post_url,
-                location="",  # Not easily extractable without specific layout
-                condition="",  # Not present on this layout
+                location=location,
+                condition="",  # Condition field not present in current layout
                 description=description,
                 seller=seller,
             )
