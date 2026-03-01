@@ -1281,6 +1281,84 @@ def parse_listing(
         except KeyboardInterrupt:
             raise
         except Exception:
-            # try next page ayout
+            # try next page layout
             continue
+
+    # Fallback: Try to extract whatever we can find using flexible selectors
+    if logger:
+        logger.warning(f"{hilight('[Parse]', 'warn')} All parsers failed, trying fallback extraction...")
+
+    try:
+        # Extract title from H1
+        h1_elements = page.query_selector_all("h1")
+        title = h1_elements[-1].text_content() if h1_elements else ""
+
+        # Extract seller from marketplace/profile link (take last non-empty one)
+        seller = ""
+        seller_links = page.query_selector_all("a[href*='marketplace/profile']")
+        for link in reversed(seller_links):
+            text = (link.text_content() or "").strip()
+            if text and text not in ["Detalhes do vendedor", "Seller details", "Details"]:
+                seller = text
+                break
+
+        # Try to find price (usually near H1)
+        price = ""
+        try:
+            price_element = page.locator("h1 + *").first
+            price_text = price_element.text_content() or ""
+            if "$" in price_text or price_text.replace(",", "").isdigit():
+                price = price_text
+        except:
+            pass
+
+        # Extract description - look for large text blocks
+        description = ""
+        try:
+            # Try multiple common description selectors
+            desc_selectors = [
+                "div[role='main'] > div > div > div > span",
+                "div > span[dir='auto']",
+            ]
+            for selector in desc_selectors:
+                elements = page.query_selector_all(selector)
+                for elem in elements:
+                    text = (elem.text_content() or "").strip()
+                    if len(text) > 50:  # Descriptions are usually longer
+                        description = text
+                        break
+                if description:
+                    break
+        except:
+            pass
+
+        # Get image
+        image_url = ""
+        try:
+            img = page.locator("img").first
+            image_url = img.get_attribute("src") or ""
+        except:
+            pass
+
+        if title:
+            if logger:
+                logger.info(f"{hilight('[Parse]', 'succ')} Fallback parser extracted: {title}")
+
+            return Listing(
+                marketplace="facebook",
+                name="",
+                id=post_url.split("?")[0].rstrip("/").split("/")[-1],
+                title=title,
+                image=image_url,
+                price=extract_price(price) if price else "",
+                post_url=post_url,
+                location="",  # Not easily extractable without specific layout
+                condition="",  # Not present on this layout
+                description=description,
+                seller=seller,
+            )
+    except Exception as e:
+        if logger:
+            logger.error(f"{hilight('[Parse]', 'fail')} Fallback parser also failed: {e}")
+
     return None
