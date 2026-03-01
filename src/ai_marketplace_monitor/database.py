@@ -85,7 +85,7 @@ class DatabaseManager:
             db_path: Path to SQLite database file. Defaults to ~/.ai-marketplace-monitor/nz_cars.db
         """
         if db_path is None:
-            db_path = amm_home() / "nz_cars.db"
+            db_path = amm_home / "nz_cars.db"
 
         self.db_path = db_path
         self._ensure_schema()

@@ -14,8 +14,10 @@ from currency_converter import CurrencyConverter  # type: ignore
 from patchright.sync_api import Browser, ElementHandle, Page  # type: ignore
 from rich.pretty import pretty_repr
 
+from .database import CarListing, DatabaseManager
 from .listing import Listing
 from .marketplace import ItemConfig, Marketplace, MarketplaceConfig, WebPage
+from .nz_filters import check_wof_and_rego, get_intercity_duration, get_nz_car_priority
 from .utils import (
     BaseConfig,
     CounterItem,
@@ -266,6 +268,7 @@ class FacebookMarketplace(Marketplace):
         assert name == self.name
         super().__init__(name, browser, keyboard_monitor, logger)
         self.page: Page | None = None
+        self.db: DatabaseManager = DatabaseManager()  # Initialize database for car listings
 
     @classmethod
     def get_config(cls: Type["FacebookMarketplace"], **kwargs: Any) -> FacebookMarketplaceConfig:
@@ -580,6 +583,43 @@ class FacebookMarketplace(Marketplace):
                         )
 
                     if self.check_listing(listing, item_config):
+                        # Save to database with NZ-specific metadata
+                        try:
+                            # Check for WOF and Rego mentions
+                            search_text = f"{listing.title} {listing.description}"
+                            has_wof, has_rego = check_wof_and_rego(search_text)
+
+                            # Get NZ city priority and bus duration
+                            city_priority = get_nz_car_priority(city)
+                            intercity_duration = get_intercity_duration(city)
+
+                            # Create and insert car listing
+                            car_listing = CarListing.from_listing(
+                                listing=listing,
+                                search_city=cname or city,
+                                has_wof_mention=has_wof,
+                                has_rego_mention=has_rego,
+                                intercity_duration=intercity_duration,
+                                city_priority=city_priority,
+                            )
+                            is_new = self.db.insert_car_listing(car_listing)
+
+                            if self.logger and is_new:
+                                wof_rego_status = []
+                                if has_wof:
+                                    wof_rego_status.append("WOF")
+                                if has_rego:
+                                    wof_rego_status.append("Rego")
+                                status_str = f" ({', '.join(wof_rego_status)})" if wof_rego_status else ""
+                                self.logger.info(
+                                    f"{hilight('[Database]', 'succ')} Saved: {listing.title} - ${listing.price}{status_str}"
+                                )
+                        except Exception as e:
+                            if self.logger:
+                                self.logger.warning(
+                                    f"{hilight('[Database]', 'fail')} Failed to save listing to database: {e}"
+                                )
+
                         yield listing
                     else:
                         counter.increment(CounterItem.EXCLUDED_LISTING, item_config.name)

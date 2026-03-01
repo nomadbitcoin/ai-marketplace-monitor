@@ -202,7 +202,7 @@ def export(
     # Default output path with timestamp
     if output is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output = amm_home() / "exports" / f"nz_cars_{timestamp}.csv"
+        output = amm_home / "exports" / f"nz_cars_{timestamp}.csv"
 
     # Initialize database manager
     db = DatabaseManager()
