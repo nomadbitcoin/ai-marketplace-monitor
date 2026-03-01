@@ -648,12 +648,29 @@ class FacebookMarketplace(Marketplace):
         self.goto_url(post_url)
         counter.increment(CounterItem.LISTING_QUERY, item_config.name)
         details = parse_listing(self.page, post_url, self.translator, self.logger)
+
+        # If parsing completely failed, create a minimal listing from what we have
         if details is None:
-            raise ValueError(
-                f"Failed to get item details of listing {post_url}. "
-                "The listing might be missing key information (e.g. seller) or not in English."
-                "Please add option language to your marketplace configuration is the latter is the case. See https://github.com/BoPeng/ai-marketplace-monitor?tab=readme-ov-file#support-for-non-english-languages for details."
+            if self.logger:
+                self.logger.warning(
+                    f"{hilight('[Retrieve]', 'warn')} Could not parse details page for {post_url}. "
+                    "Creating minimal listing from search results data."
+                )
+            # Create minimal listing with URL, title, and price from search results
+            details = Listing(
+                marketplace="facebook",
+                name="",
+                id=post_url.split("?")[0].rstrip("/").split("/")[-1],
+                title=title or "Unknown",
+                image="",
+                price=price or "",
+                post_url=post_url,
+                location="",
+                condition="",
+                description="",
+                seller="",
             )
+
         details.to_cache(post_url)
         return details, False
 
@@ -906,8 +923,15 @@ class FacebookItemPage(WebPage):
         price = self.get_price()
         description = self.get_description()
 
-        if not title or not price or not description:
-            raise ValueError(f"Failed to parse {post_url}")
+        # Only require title as bare minimum - everything else is optional
+        if not title:
+            raise ValueError(f"Failed to parse {post_url} - no title found")
+
+        # Log warning if missing critical fields but continue anyway
+        if not price and self.logger:
+            self.logger.warning(f"{hilight('[Retrieve]', 'warn')} No price found for {title}")
+        if not description and self.logger:
+            self.logger.debug(f"{hilight('[Retrieve]', 'warn')} No description found for {title}")
 
         if self.logger:
             self.logger.info(f"{hilight('[Retrieve]', 'succ')} Parsing {hilight(title)}")
@@ -917,7 +941,7 @@ class FacebookItemPage(WebPage):
             id=post_url.split("?")[0].rstrip("/").split("/")[-1],
             title=title,
             image=self.get_image_url(),
-            price=extract_price(price),
+            price=extract_price(price) if price else "",
             post_url=post_url,
             location=self.get_location(),
             condition=self.get_condition(),
