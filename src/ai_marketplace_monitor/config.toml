@@ -254,11 +254,13 @@ currency = 'AUD'
 
 
 [region.nzl]
-full_name = "New Zealand"
-radius = 805
-city_name = ["Hamilton", "Lake Tekapo"]
-search_city = ["104080336295923", "106528236047934"]
+full_name = "New Zealand - North Island Car Search"
+radius = 100
+city_name = ["Auckland", "Hamilton", "Rotorua", "Napier", "Wellington"]
+search_city = ["auckland", "104080336295923", "rotorua", "napier", "wellington"]
 currency = 'NZD'
+# Priority order for NZ car scraper: Auckland (1), Hamilton (2), Rotorua (3), Napier (4), Wellington (5)
+# Radius reduced to 100km per PRD requirements for intercity bus accessibility
 
 
 [region.ind]
@@ -344,3 +346,31 @@ locale = "Swedish"
 "About this vehicle" = "Om detta fordon"
 "Seller's description" = "Säljarens beskrivning"
 "Browse Marketplace" = 'Bläddra på Marketplace'
+
+#
+# NZ Car Scraper Tasks - Under $2000 NZD with WOF/Rego filtering
+# Configured per PRD Epic 1, Story 1.5
+#
+
+# Example marketplace configuration for NZ (optional - can use defaults)
+[marketplace.facebook_nz]
+search_region = 'nzl'
+category = 'vehicles'
+delivery_method = ['local_pick_up']
+
+# Example NZ car search task
+# Searches all NZ North Island cities for cars under $2000 with WOF/Rego mentions
+[item.nz_cars_under_2000]
+search_phrases = 'car'
+keywords = "(wof OR 'warrant of fitness' OR rego OR registration) AND car"
+max_price = '2000 NZD'
+category = 'vehicles'
+delivery_method = ['local_pick_up']
+search_region = 'nzl'
+# Note: WOF/Rego filtering happens both in keyword matching and database tracking
+# Database will mark has_wof_mention and has_rego_mention for CSV filtering
+
+# Example user configuration (users should create ~/.ai-marketplace-monitor/config.toml)
+# [user.admin_user]
+# pushbullet_token = 'your_pushbullet_token_here'
+
