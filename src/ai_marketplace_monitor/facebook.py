@@ -1315,6 +1315,17 @@ def parse_listing(
         # Extract description - look for large text blocks
         description = ""
         try:
+            # First, try to click "See more" / "Ver mais" button to expand full description
+            try:
+                see_more_button = page.get_by_text(re.compile(r"(See more|Ver mais|See More|Voir plus|Mehr anzeigen)", re.IGNORECASE))
+                if see_more_button.is_visible(timeout=2000):
+                    see_more_button.click()
+                    page.wait_for_timeout(1000)  # Wait for expansion
+                    if logger:
+                        logger.debug(f"{hilight('[Parse]', 'info')} Clicked 'See more' to expand description")
+            except:
+                pass  # Button not found or already expanded
+
             # Try multiple common description selectors
             desc_selectors = [
                 "div[role='main'] > div > div > div > span",
