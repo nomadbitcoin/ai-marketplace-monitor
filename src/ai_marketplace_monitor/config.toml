@@ -348,29 +348,26 @@ locale = "Swedish"
 "Browse Marketplace" = 'Bläddra på Marketplace'
 
 #
-# NZ Car Scraper Tasks - Under $2000 NZD with WOF/Rego filtering
+# NZ Car Scraper Task Examples
 # Configured per PRD Epic 1, Story 1.5
 #
-
-# Example marketplace configuration for NZ (optional - can use defaults)
-[marketplace.facebook_nz]
-search_region = 'nzl'
-category = 'vehicles'
-delivery_method = ['local_pick_up']
+# To use these examples, copy them to ~/.ai-marketplace-monitor/config.toml
+# and customize for your needs.
+#
 
 # Example NZ car search task
 # Searches all NZ North Island cities for cars under $2000 with WOF/Rego mentions
-[item.nz_cars_under_2000]
-search_phrases = 'car'
-keywords = "(wof OR 'warrant of fitness' OR rego OR registration) AND car"
-max_price = '2000 NZD'
-category = 'vehicles'
-delivery_method = ['local_pick_up']
-search_region = 'nzl'
+# [item.nz_cars_under_2000]
+# search_phrases = 'car'
+# keywords = "(wof OR 'warrant of fitness' OR rego OR registration) AND car"
+# max_price = '2000 NZD'
+# category = 'vehicles'
+# delivery_method = ['local_pick_up']
+# search_region = 'nzl'
 # Note: WOF/Rego filtering happens both in keyword matching and database tracking
 # Database will mark has_wof_mention and has_rego_mention for CSV filtering
 
-# Example user configuration (users should create ~/.ai-marketplace-monitor/config.toml)
-# [user.admin_user]
+# Example user configuration (create ~/.ai-marketplace-monitor/config.toml)
+# [user.me]
 # pushbullet_token = 'your_pushbullet_token_here'
 

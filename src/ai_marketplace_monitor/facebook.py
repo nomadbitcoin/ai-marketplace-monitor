@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from itertools import repeat
 from logging import Logger
+from pathlib import Path
 from typing import Any, Generator, List, Tuple, Type, cast
 from urllib.parse import quote
 
@@ -20,6 +21,7 @@ from .utils import (
     CounterItem,
     KeyboardMonitor,
     Translator,
+    amm_home,
     convert_to_seconds,
     counter,
     doze,
@@ -276,7 +278,33 @@ class FacebookMarketplace(Marketplace):
     def login(self: "FacebookMarketplace") -> None:
         assert self.browser is not None
 
-        self.page = self.create_page(swap_proxy=True)
+        # Define storage state path for session persistence
+        storage_state_path = amm_home / "facebook_session.json"
+
+        # Check if saved session exists
+        has_saved_session = storage_state_path.exists()
+
+        # Try to load existing session
+        self.page = self.create_page(swap_proxy=True, storage_state_path=storage_state_path)
+
+        # If we have a saved session, check if we're already logged in
+        if has_saved_session:
+            # Navigate to marketplace to check if session is still valid
+            try:
+                self.page.goto("https://www.facebook.com/marketplace", timeout=10000)
+                time.sleep(2)
+
+                # Check if we're on marketplace (not redirected to login)
+                if "marketplace" in self.page.url:
+                    if self.logger:
+                        self.logger.info(f"{hilight('[Session]', 'succ')} Logged in using saved session")
+                    return  # Already logged in, skip the rest
+                else:
+                    if self.logger:
+                        self.logger.warning(f"{hilight('[Session]', 'fail')} Saved session expired, need to re-login")
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning(f"{hilight('[Session]', 'fail')} Failed to verify session: {e}")
 
         # Navigate to the URL, no timeout
         self.goto_url(self.initial_url)
@@ -344,6 +372,16 @@ class FacebookMarketplace(Marketplace):
                     )
                 )
             doze(login_wait_time, keyboard_monitor=self.keyboard_monitor)
+
+        # Save session state after login for persistence
+        if self.page and self.page.context:
+            try:
+                self.page.context.storage_state(path=str(storage_state_path))
+                if self.logger:
+                    self.logger.info(f"{hilight('[Session]', 'succ')} Session saved to {storage_state_path}")
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning(f"{hilight('[Session]', 'fail')} Failed to save session: {e}")
 
     def search(
         self: "FacebookMarketplace", item_config: FacebookItemConfig
@@ -707,6 +745,15 @@ class FacebookSearchResultPage(WebPage):
                 )
                 self.logger.info(f"{hilight('[Retrieve]', 'dim')} {msg}")
             return []
+
+        # Scroll to load more listings (3 times to get more results)
+        if self.logger:
+            self.logger.info(f"{hilight('[Scroll]', 'info')} Scrolling to load more listings...")
+        for scroll_num in range(3):
+            self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            time.sleep(3)  # Wait for Facebook to load more listings
+            if self.logger:
+                self.logger.info(f"{hilight('[Scroll]', 'info')} Scroll {scroll_num + 1}/3 completed")
 
         # find the grid box
         try:

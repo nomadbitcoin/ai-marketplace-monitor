@@ -2,6 +2,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from logging import Logger
+from pathlib import Path
 from typing import Any, Callable, Generator, Generic, List, Type, TypeVar
 
 from patchright.sync_api import Browser, ElementHandle, Locator, Page  # type: ignore
@@ -13,6 +14,7 @@ from .utils import (
     KeyboardMonitor,
     MonitorConfig,
     Translator,
+    amm_home,
     convert_to_seconds,
     hilight,
 )
@@ -497,7 +499,7 @@ class Marketplace(Generic[TMarketplaceConfig, TItemConfig]):
             self.browser = None
             self.page = None
 
-    def create_page(self: "Marketplace", swap_proxy: bool = False) -> Page:
+    def create_page(self: "Marketplace", swap_proxy: bool = False, storage_state_path: Path | None = None) -> Page:
         assert self.browser is not None
 
         # if there is an existing page, asked to swap_proxy, and there is an proxy_server
@@ -513,13 +515,21 @@ class Marketplace(Generic[TMarketplaceConfig, TItemConfig]):
             self.page = None
 
         if self.page is None:
-            context = self.browser.new_context(
-                proxy=(
+            context_options = {
+                "proxy": (
                     None
                     if self.config.monitor_config is None
                     else self.config.monitor_config.get_proxy_options()
                 )
-            )
+            }
+
+            # Load storage state if path is provided and file exists
+            if storage_state_path and storage_state_path.exists():
+                context_options["storage_state"] = str(storage_state_path)
+                if self.logger:
+                    self.logger.info(f"{hilight('[Session]', 'info')} Loading saved session from {storage_state_path}")
+
+            context = self.browser.new_context(**context_options)
             self.page = context.new_page()
         return self.page
 
