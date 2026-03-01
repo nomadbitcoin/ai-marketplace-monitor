@@ -54,11 +54,32 @@ class CarListing:
         city_priority: Optional[int] = None,
     ) -> "CarListing":
         """Create CarListing from generic Listing model."""
+        # Extract numeric price from string (handle ranges like "NZ$2.000 | NZ$2.500")
+        price_value = 0.0
+        if listing.price:
+            # Take first price if it's a range (separated by |)
+            first_price = listing.price.split("|")[0].strip()
+            # Remove currency symbols and extract number
+            import re
+            numbers = re.findall(r"[\d,.]+", first_price)
+            if numbers:
+                # Remove periods used as thousand separators in some locales
+                # and convert commas to dots for decimal points
+                num_str = numbers[0].replace(".", "").replace(",", ".")
+                try:
+                    price_value = float(num_str)
+                except ValueError:
+                    # If still can't convert, try without any replacements
+                    try:
+                        price_value = float(numbers[0].replace(",", ""))
+                    except ValueError:
+                        price_value = 0.0
+
         return cls(
             listing_id=listing.id,
             url=listing.post_url,
             title=listing.title,
-            price=float(listing.price) if listing.price else 0.0,
+            price=price_value,
             search_city=search_city,
             actual_location=listing.location,
             distance_from_city_km=distance_km,
