@@ -256,10 +256,10 @@ currency = 'AUD'
 [region.nzl]
 full_name = "New Zealand - North Island Car Search"
 radius = 100
-city_name = ["Auckland", "Hamilton", "Rotorua", "Napier", "Wellington"]
-search_city = ["auckland", "104080336295923", "rotorua", "napier", "wellington"]
+city_name = ["Auckland", "Hamilton", "Rotorua", "Napier", "Wellington", "Taupo", "New Plymouth"]
+search_city = ["auckland", "104080336295923", "rotorua", "napier", "wellington", "taupo", "new plymouth"]
 currency = 'NZD'
-# Priority order for NZ car scraper: Auckland (1), Hamilton (2), Rotorua (3), Napier (4), Wellington (5)
+# Priority order for NZ car scraper: Auckland (1), Hamilton (2), Rotorua (3), Napier (4), Wellington (5), Taupo (6), New Plymouth (7)
 # Radius reduced to 100km per PRD requirements for intercity bus accessibility
 
 
