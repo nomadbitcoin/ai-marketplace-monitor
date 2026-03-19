@@ -58,10 +58,20 @@ logger = logging.getLogger("marketplace_monitor")
 # ============================================================================
 # CONFIGURATION — edit here
 # ============================================================================
-SEARCH_URL = (
-    "https://www.facebook.com/marketplace/115055298507659/search/"
-    "?minPrice=1235&maxPrice=1550&query=wof&exact=false"
-)
+SEARCH_URLS = [
+    {
+        "label": "WOF",
+        "url": (
+            "https://www.facebook.com/marketplace/115055298507659/search/"
+            "?minPrice=1235&maxPrice=1550&query=wof&exact=false"
+        ),
+    },
+    # Add more searches here, e.g.:
+    {
+        "label": "Car",
+        "url": "https://www.facebook.com/marketplace/115055298507659/search/?minPrice=1235&maxPrice=1550&query=car&exact=false",
+    },
+]
 
 WEBHOOK_URL = "https://automate.nomadbitcoin.xyz/webhook/6e0857d3-8600-4828-a6a9-8fa76078b50b"
 WEBHOOK_AUTH = "Basic YWktbWFya2V0cGxhY2UtbW9uaXRvcjpZV2t0YldGeWEyVjBjR3hoWTJVdGJXOXVhWFJ2Y2pwaWRXNWtZUT0="
@@ -111,12 +121,14 @@ def send_webhook(new_listings: list) -> bool:
         logger.error("[WEBHOOK] requests library not available — install it first")
         return False
 
-    lines = [f"New WOF listings ({len(new_listings)} found):"]
+    lines = [f"New Car listings with wof query ({len(new_listings)} found):"]
     for l in new_listings:
         title = l.get("title") or "(no title)"
         price = l.get("price") or "?"
         url = l.get("url", "")
-        lines.append(f"• NZ${price} — {title}\n  {url}")
+        label = l.get("_label", "")
+        prefix = f"[{label}] " if label else ""
+        lines.append(f"• {prefix}NZ${price} — {title}\n  {url}")
 
     message = "\n".join(lines)
 
@@ -216,10 +228,10 @@ def scroll_and_load(page) -> int:
     return page.evaluate(count_js)
 
 
-def scrape(page) -> list:
-    """Navigate, scroll, extract, and filter listings."""
-    logger.info(f"[NAV] {SEARCH_URL}")
-    page.goto(SEARCH_URL, timeout=60000)
+def scrape(page, url: str, label: str = "") -> list:
+    """Navigate to url, scroll, extract, and filter listings."""
+    logger.info(f"[NAV] {label + ': ' if label else ''}{url}")
+    page.goto(url, timeout=60000)
     page.wait_for_load_state("domcontentloaded")
     time.sleep(3)
 
@@ -272,7 +284,7 @@ def main():
 
     from patchright.sync_api import sync_playwright  # noqa: PLC0415
 
-    listings = []
+    all_listings = []
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(
@@ -290,7 +302,14 @@ def main():
             page = context.new_page()
 
             try:
-                listings = scrape(page)
+                for entry in SEARCH_URLS:
+                    url = entry["url"]
+                    label = entry.get("label", "")
+                    results = scrape(page, url, label)
+                    for r in results:
+                        r["_label"] = label
+                    all_listings.extend(results)
+                    logger.info(f"[URL] {label or url}: {len(results)} listings")
             finally:
                 try:
                     browser.close()
@@ -301,21 +320,28 @@ def main():
         logger.error(f"[ERROR] Scraping failed: {e}")
         sys.exit(1)
 
-    # Find new listings
-    new_listings = [l for l in listings if l.get("listing_id") and l["listing_id"] not in seen_ids]
-    logger.info(f"[NEW] {len(new_listings)} new listings (out of {len(listings)} total)")
+    # Find new listings — deduplicate by listing_id (same item may appear in multiple search URLs)
+    seen_new_ids: set = set()
+    new_listings = []
+    for l in all_listings:
+        lid = l.get("listing_id")
+        if lid and lid not in seen_ids and lid not in seen_new_ids:
+            seen_new_ids.add(lid)
+            new_listings.append(l)
+    logger.info(f"[NEW] {len(new_listings)} new listings (out of {len(all_listings)} total)")
 
     if new_listings:
         for l in new_listings:
-            logger.info(f"  + {l.get('title') or '(no title)'} — NZ${l.get('price', '?')} — {l.get('url', '')}")
+            label = f"[{l['_label']}] " if l.get("_label") else ""
+            logger.info(f"  + {label}{l.get('title') or '(no title)'} — NZ${l.get('price', '?')} — {l.get('url', '')}")
         send_webhook(new_listings)
     else:
         logger.info("[OK] No new listings — nothing to send")
 
     # Update state: union of seen + all current IDs (so deleted listings don't re-alert)
-    current_ids = {l["listing_id"] for l in listings if l.get("listing_id")}
+    current_ids = {l["listing_id"] for l in all_listings if l.get("listing_id")}
     save_seen_ids(seen_ids | current_ids)
-    logger.info(f"[STATE] Saved {len(seen_ids | current_ids)} total seen IDs")
+    logger.info(f"[STATE] Saved {len(seen_ids | current_ids)} total seen IDs ({len(SEARCH_URLS)} URL(s) monitored)")
 
     logger.info("[DONE] Exiting cleanly")
     signal.alarm(0)  # Cancel timeout
